@@ -19,7 +19,8 @@ def main():
     ap.add_argument("--interval", type=float, help="override report interval (s)")
     ap.add_argument("--stats-dir", default="/tmp")
     a = ap.parse_args()
-    cfg = yaml.safe_load(open(a.config))
+    with open(a.config) as fh:
+        cfg = yaml.safe_load(fh)
     mon = cfg["monitoring"]
     dest = (a.controller or mon["controller_ip"], a.port or int(mon["report_port"]))
     interval = a.interval or float(mon["report_interval"])

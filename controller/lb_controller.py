@@ -200,7 +200,8 @@ if HAVE_RYU:
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
             cfg_path = os.environ.get("LB_CONFIG", os.path.join(ROOT, "config", "config.yaml"))
-            self.cfg = yaml.safe_load(open(cfg_path))
+            with open(cfg_path) as fh:
+                self.cfg = yaml.safe_load(fh)
             self.mode = resolve_mode(self.cfg)
             self.state = LBState(self.cfg, self.mode)
             c = self.cfg

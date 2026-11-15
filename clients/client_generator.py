@@ -85,13 +85,14 @@ def main():
     for t in ths:
         t.join()
     rows = sorted((r for o in outs for r in o), key=lambda r: r[0])
+    elapsed = time.time() - start  # slightly > a.duration due to thread join; acceptable
     if a.csv:
         with open(a.csv, "w", newline="") as f:
             w = csv.writer(f)
             w.writerow(["ts", "client", "req", "server", "latency_ms", "status"])
             for r in rows:
                 w.writerow([f"{r[0]:.4f}", r[1], r[2], r[3], f"{r[4]:.2f}", r[5]])
-    s = summarize(rows, time.time() - start, a.label)
+    s = summarize(rows, elapsed, a.label)
     if a.summary:
         with open(a.summary, "w") as f:
             json.dump(s, f)

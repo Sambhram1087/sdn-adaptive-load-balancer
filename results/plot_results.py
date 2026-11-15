@@ -80,7 +80,8 @@ def main():
             sv, av = float(s[col].iloc[0]), float(a[col].iloc[0])
             imp = ((sv - av) if lower_better else (av - sv)) / sv * 100 if sv else float("nan")
             lines.append(f"| {LABEL.get(sc, sc)} | {name} | {sv:.1f} {unit} | {av:.1f} {unit} | {imp:.0f} % |" if imp == imp else f"| {LABEL.get(sc, sc)} | {name} | {sv:.1f} {unit} | {av:.1f} {unit} | n/a |")
-    open(os.path.join(HERE, "summary.md"), "w").write("\n".join(lines) + "\n")
+    with open(os.path.join(HERE, "summary.md"), "w") as fh:
+        fh.write("\n".join(lines) + "\n")
 
     scs = [s for s in ORDER if s in set(sm.scenario)] + sorted(set(sm.scenario) - set(ORDER))
     fig, axes = plt.subplots(1, 2, figsize=(13, 4.5))

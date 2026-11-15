@@ -1,38 +1,38 @@
 #!/usr/bin/env bash
-# T4/T5: failure + recovery of s2 (h5). MODE=kill (default, kills the server process) or MODE=link (takes s1-eth2 down).
-set -u
-cd "$(dirname "$0")/.." || exit 1
-[ "$EUID" -eq 0 ] || exec sudo -E env "PATH=$PATH" bash "$0" "$@"
-[ -f /tmp/lb_hosts/ready ] || { echo "topology not running (start ryu-manager, then sudo python3 topology/lb_topology.py)"; exit 2; }
-hexec() { local h=$1; shift; mnexec -a "$(cat /tmp/lb_hosts/$h.pid)" "$@"; }
-mkdir -p results/tmp
-PREFIX=${LB_LOG_PREFIX:-results/controller}
-MODE=${MODE:-kill}; D=${DURATION:-45}; KILL_AT=10; RESTART_AT=28
-fail()    { if [ "$MODE" = link ]; then ip link set s1-eth2 down; else pkill -f "tcp_server.py --name s2"; fi; }
-restore() { if [ "$MODE" = link ]; then ip link set s1-eth2 up
-            else hexec h5 nohup python3 servers/tcp_server.py --name s2 --port 9000 > results/logs/s2_server.log 2>&1 & fi; }
-T0=$(date +%s.%N)
-for h in h1 h2 h3; do
-  hexec $h python3 clients/client_generator.py --clients 17 --duration $D --csv results/tmp/fail_$h.csv > /dev/null &
-done
-sleep $KILL_AT;                 T_FAIL=$(date +%s.%N);    echo "failing s2 ($MODE) at +${KILL_AT}s"; fail
-sleep $((RESTART_AT-KILL_AT));  T_RESTORE=$(date +%s.%N); echo "restoring s2 at +${RESTART_AT}s"; restore
-wait
-python3 - "$T0" "$T_FAIL" "$T_RESTORE" "$PREFIX" <<'PY'
-import csv, glob, os, sys
-t0, tf, tr = map(float, sys.argv[1:4]); prefix = sys.argv[4]
-rows = [r for f in glob.glob("results/tmp/fail_h*.csv") for r in csv.DictReader(open(f))]
-ev = list(csv.DictReader(open(prefix + "_events.csv"))) if os.path.exists(prefix + "_events.csv") else []
-def phase(name, a, b):
-    w = [r for r in rows if a <= float(r["ts"]) < b]
-    ok = [r for r in w if r["status"] == "ok"]
-    print(f"{name:<22} requests={len(w):4d} failed={len(w)-len(ok):3d} to_s2={sum(r['server']=='s2' for r in ok):4d}")
-phase("before failure", t0, tf); phase("failure -> restore", tf, tr); phase("after restore", tr + 12, 1e18)
-down = [float(e["ts"]) for e in ev if e["server"] == "s2" and e["new"] == "DOWN" and float(e["ts"]) >= tf]
-up = [float(e["ts"]) for e in ev if e["server"] == "s2" and e["new"] == "UP" and float(e["ts"]) >= tr]
-print("detection time: %s" % (f"{down[0]-tf:.1f}s" if down else "not detected"))
-print("recovery time:  %s" % (f"{up[0]-tr:.1f}s" if up else "not recovered"))
-mid = [r for r in rows if tf + 8 <= float(r["ts"]) < tr and r["status"] == "ok"]
-good = bool(down) and not any(r["server"] == "s2" for r in mid)
-print("T4", "PASS" if good else "FAIL", "| T5", "PASS" if up else "FAIL"); sys.exit(0 if good and up else 1)
-PY
+# Failure: kill s2's server mid-run. Adaptive mode must detect DOWN within the timeout and stop routing to s2.
+source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+need_root
+trap stop_env EXIT
+P="$TESTRUNS/failure_adaptive"
+TIMEOUT=$(python3 -c "import yaml;print(yaml.safe_load(open('$ROOT/config/config.yaml'))['monitoring']['failure_timeout'])")
+
+start_env adaptive "$P" || exit 1
+run_clients "$P" 9 40 0.1 &
+CP=$!
+sleep 12
+date +%s.%N > "${P}_kill.txt"
+pkill -f "tcp_server.py.*--name s2"
+echo "killed s2 server"
+wait "$CP"
+
+read -r DET LATE_S2 LATE_FAIL < <(python3 - "$P" <<'EOF'
+import glob, sys
+import pandas as pd
+p = sys.argv[1]
+kill = float(open(p + "_kill.txt").read())
+ev = pd.read_csv(p + "_events.csv")
+d = ev[(ev.server == "s2") & (ev.new == "DOWN") & (ev.ts >= kill)]
+det = float(d.ts.iloc[0] - kill) if len(d) else -1.0
+df = pd.concat(pd.read_csv(f) for f in glob.glob(p + "_h*.csv"))
+late = df[df.ts > kill + (det if det >= 0 else 1e9) + 2]
+print(round(det, 2), int(((late.server == "s2") & (late.status == "ok")).sum()),
+      round(100 * float((late.status != "ok").mean()), 2) if len(late) else 100.0)
+EOF
+)
+echo "detection=${DET}s  s2_served_after_detection=$LATE_S2  late_fail_pct=$LATE_FAIL"
+
+check "s2 detected DOWN"                  python3 -c "import sys; sys.exit(0 if $DET >= 0 else 1)"
+check "detected within timeout + 3 s"     python3 -c "import sys; sys.exit(0 if 0 <= $DET <= $TIMEOUT + 3 else 1)"
+check "no traffic to s2 after detection"  [ "$LATE_S2" -eq 0 ]
+check "failures after detection < 5%"     python3 -c "import sys; sys.exit(0 if $LATE_FAIL < 5 else 1)"
+finish

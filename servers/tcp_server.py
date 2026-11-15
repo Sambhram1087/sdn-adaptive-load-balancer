@@ -1,138 +1,92 @@
 #!/usr/bin/env python3
-"""Multi-threaded TCP server. Protocol: client sends "REQ <id>\n", server replies "OK <name> <id> <ms>\n".
+"""Backend TCP server behind the VIP. Protocol: client sends "REQ <id>\\n", server replies "OK <name> <id>\\n".
 
-Runtime throttling (for overload tests): write "<delay_ms> [work_ms]" to /tmp/lb_<name>.ctl.
-Load stats are published to /tmp/lb_<name>.stats for monitoring/server_reporter.py.
+Writes /tmp/lb_<name>.stats (JSON: ts, pid, active, avg_ms) twice a second; monitoring/server_reporter.py
+forwards it to the controller. If this process dies the file goes stale and the reports stop (failure detection).
+
+Fault injection (read on every request): /tmp/lb_<name>.slow containing "<extra_sleep_ms> <cpu_burn_ms>".
 """
-import argparse, json, os, signal, socket, socketserver, threading, time
-from collections import deque
-
-
-def spin(ms):
-    end = time.perf_counter() + ms / 1000.0
-    while time.perf_counter() < end:
-        pass
-
-
-class Ctx:
-    def __init__(self, a):
-        self.name, self.dir = a.name, a.stats_dir
-        self.delay, self.work = a.delay_ms, a.work_ms
-        self.idle = a.idle_timeout
-        self.lock = threading.Lock()
-        self.active = 0
-        self.total = 0
-        self.recent = deque(maxlen=200)
-        self.ctl_path = os.path.join(self.dir, f"lb_{self.name}.ctl")
-        self.stats_path = os.path.join(self.dir, f"lb_{self.name}.stats")
-        self._ctl_t = 0.0
-        self._ctl = (self.delay, self.work)
-
-    def control(self):
-        now = time.time()
-        if now - self._ctl_t > 0.5:
-            self._ctl_t = now
-            try:
-                p = open(self.ctl_path).read().split()
-                self._ctl = (float(p[0]), float(p[1]) if len(p) > 1 else self.work)
-            except (OSError, ValueError, IndexError):
-                self._ctl = (self.delay, self.work)
-        return self._ctl
-
-    def enter(self):
-        with self.lock:
-            self.active += 1
-
-    def leave(self):
-        with self.lock:
-            self.active -= 1
-
-    def record(self, ms):
-        with self.lock:
-            self.total += 1
-            self.recent.append(ms)
-
-    def publish(self):
-        with self.lock:
-            avg = sum(self.recent) / len(self.recent) if self.recent else 0.0
-            d = {"pid": os.getpid(), "ts": time.time(), "active": self.active,
-                 "total": self.total, "avg_ms": round(avg, 2)}
-        tmp = self.stats_path + ".tmp"
-        with open(tmp, "w") as f:
-            json.dump(d, f)
-        os.replace(tmp, self.stats_path)
-
-
-class Handler(socketserver.StreamRequestHandler):
-    def handle(self):
-        c = self.server.ctx
-        c.enter()
-        try:
-            self.request.settimeout(c.idle)
-            for line in self.rfile:
-                t0 = time.perf_counter()
-                parts = line.decode(errors="replace").split()
-                if not parts:
-                    continue
-                if parts[0] == "QUIT":
-                    break
-                rid = parts[1] if len(parts) > 1 else "0"
-                delay, work = c.control()
-                spin(work)
-                time.sleep(delay / 1000.0)
-                ms = (time.perf_counter() - t0) * 1000.0
-                c.record(ms)
-                self.wfile.write(f"OK {c.name} {rid} {ms:.2f}\n".encode())
-        except (socket.timeout, OSError):
-            pass
-        finally:
-            c.leave()
-
-
-class Server(socketserver.ThreadingMixIn, socketserver.TCPServer):
-    allow_reuse_address = True
-    daemon_threads = True
-    request_queue_size = 256
+import argparse
+import json
+import os
+import socket
+import threading
+import time
 
 
 def main():
-    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap = argparse.ArgumentParser()
     ap.add_argument("--name", required=True)
-    ap.add_argument("--host", default="0.0.0.0")
     ap.add_argument("--port", type=int, default=9000)
-    ap.add_argument("--delay-ms", type=float, default=20.0, help="sleep per request")
-    ap.add_argument("--work-ms", type=float, default=5.0, help="CPU busy-loop per request")
-    ap.add_argument("--idle-timeout", type=float, default=10.0)
+    ap.add_argument("--host", default="0.0.0.0")
+    ap.add_argument("--service-ms", type=float, default=20.0, help="base service time per request")
     ap.add_argument("--stats-dir", default="/tmp")
     a = ap.parse_args()
-    ctx = Ctx(a)
-    srv = Server((a.host, a.port), Handler)
-    srv.ctx = ctx
 
-    def publisher():
+    stats_path = os.path.join(a.stats_dir, f"lb_{a.name}.stats")
+    slow_path = os.path.join(a.stats_dir, f"lb_{a.name}.slow")
+    lock = threading.Lock()
+    st = {"active": 0, "avg_ms": 0.0}
+
+    def slow():
+        try:
+            sleep_ms, burn_ms = (float(x) for x in open(slow_path).read().split()[:2])
+            return max(0.0, sleep_ms), max(0.0, burn_ms)
+        except (OSError, ValueError):
+            return 0.0, 0.0
+
+    def handle(conn):
+        t0 = time.time()
+        with lock:
+            st["active"] += 1
+        try:
+            conn.settimeout(5)
+            buf = b""
+            while not buf.endswith(b"\n"):
+                chunk = conn.recv(1024)
+                if not chunk:
+                    return
+                buf += chunk
+            sleep_ms, burn_ms = slow()
+            end = time.perf_counter() + burn_ms / 1000.0
+            while time.perf_counter() < end:  # busy loop => visible CPU load
+                pass
+            time.sleep((a.service_ms + sleep_ms) / 1000.0)
+            parts = buf.split()
+            rid = parts[1].decode(errors="replace") if len(parts) > 1 else "-"
+            conn.sendall(f"OK {a.name} {rid}\n".encode())
+        except OSError:
+            pass
+        finally:
+            conn.close()
+            dt = (time.time() - t0) * 1000.0
+            with lock:
+                st["active"] -= 1
+                st["avg_ms"] = dt if st["avg_ms"] == 0 else 0.8 * st["avg_ms"] + 0.2 * dt
+
+    def writer():
+        tmp = stats_path + ".tmp"
         while True:
+            with lock:
+                snap = {"ts": time.time(), "pid": os.getpid(), "active": st["active"],
+                        "avg_ms": round(st["avg_ms"], 2)}
             try:
-                ctx.publish()
+                with open(tmp, "w") as f:
+                    json.dump(snap, f)
+                os.replace(tmp, stats_path)  # atomic: reporter never reads a partial file
             except OSError:
                 pass
             time.sleep(0.5)
 
-    threading.Thread(target=publisher, daemon=True).start()
-
-    def stop(*_):
-        threading.Thread(target=srv.shutdown, daemon=True).start()
-
-    signal.signal(signal.SIGTERM, stop)
-    signal.signal(signal.SIGINT, stop)
-    print(f"[{a.name}] listening on {a.host}:{a.port}", flush=True)
-    try:
-        srv.serve_forever()
-    finally:
-        try:
-            os.remove(ctx.stats_path)
-        except OSError:
-            pass
-        srv.server_close()
+    srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    srv.bind((a.host, a.port))
+    srv.listen(512)
+    threading.Thread(target=writer, daemon=True).start()
+    print(f"{a.name} listening on {a.host}:{a.port}", flush=True)
+    while True:
+        conn, _ = srv.accept()
+        threading.Thread(target=handle, args=(conn,), daemon=True).start()
 
 
 if __name__ == "__main__":

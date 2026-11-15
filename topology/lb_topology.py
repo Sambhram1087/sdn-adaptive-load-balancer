@@ -35,7 +35,8 @@ def main():
     ap.add_argument("--bw", type=float, default=10, help="link bandwidth in Mbit/s (match config normalization)")
     ap.add_argument("--no-cli", action="store_true", help="run until SIGINT/SIGTERM instead of opening the CLI")
     a = ap.parse_args()
-    cfg = yaml.safe_load(open(a.config))
+    with open(a.config) as fh:
+        cfg = yaml.safe_load(fh)
     setLogLevel("info")
 
     net = Mininet(controller=None, switch=OVSSwitch, link=TCLink, autoSetMacs=False, waitConnected=False)
@@ -71,7 +72,7 @@ def main():
     for h in net.hosts:
         with open(os.path.join(PID_DIR, h.name + ".pid"), "w") as f:
             f.write(str(h.pid))
-    open(os.path.join(PID_DIR, "ready"), "w").close()
+    open(os.path.join(PID_DIR, "ready"), "w").close()  # atomic marker; topology is ready
     info("*** topology ready (VIP %s:%s)\n" % (cfg["vip"], port))
 
     try:
@@ -86,7 +87,10 @@ def main():
         for p in procs:
             p.terminate()
         for f in os.listdir(PID_DIR) if os.path.isdir(PID_DIR) else []:
-            os.remove(os.path.join(PID_DIR, f))
+            try:
+                os.remove(os.path.join(PID_DIR, f))
+            except OSError:
+                pass
         net.stop()
 
 
