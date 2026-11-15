@@ -3,7 +3,7 @@
 > Jackfruit Mini Project: SDN + Socket Programming
 > Adaptive TCP load balancing using Mininet, an OpenFlow controller (Ryu), and low-level Python sockets.
 
-**Team:** `Sambhram Laxman Sattigeri (PES1UG25AM516)`, `<Bandla Samhith (PES1UG25AM559)>`, `<Name 3 (SRN)>`
+**Team:** `Sambhram Laxman Sattigeri (PES1UG25AM516)`, `Bandla Samhith (PES1UG25AM559)`, `<Name 3 (SRN)>`
 **Course / Section:** `Computer Networks(UE25CS243A), CSE (AI & ML) 'I' Section`
 
 ---
@@ -334,15 +334,7 @@ flow:
 | Servers not reporting          | Confirm controller listens on `monitoring.report_port` in `config.yaml` and that no firewall blocks UDP on 10.0.0.254 |
 | `--mode` rejected by Ryu       | Use the `LB_MODE` environment variable instead                         |
 
-## 14. Team Contributions
-
-| Member     | Contribution                                      |
-|------------|---------------------------------------------------|
-| `<Name 1>` | Topology, TCP servers, test scripts               |
-| `<Name 2>` | Controller logic, load-balancing policy           |
-| `<Name 3>` | Monitoring, performance evaluation, documentation |
-
-## 15. References
+## 14. References
 
 - Mininet documentation: https://mininet.org
 - Ryu SDN Framework: https://ryu-sdn.org
