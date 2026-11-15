@@ -3,7 +3,7 @@
 > Jackfruit Mini Project: SDN + Socket Programming
 > Adaptive TCP load balancing using Mininet, an OpenFlow controller (Ryu), and low-level Python sockets.
 
-**Team:** `Sambhram Laxman Sattigeri (PES1UG25AM516)`, `<Name 2 (SRN)>`, `<Name 3 (SRN)>`
+**Team:** `Sambhram Laxman Sattigeri (PES1UG25AM516)`, `<Bandla Samhith (PES1UG25AM559)>`, `<Name 3 (SRN)>`
 **Course / Section:** `Computer Networks(UE25CS243A), CSE (AI & ML) 'I' Section`
 
 ---
