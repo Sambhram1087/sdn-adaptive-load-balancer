@@ -266,21 +266,46 @@ python3 results/plot_results.py
 
 ## 11. Results
 
-> Fill this in after running experiments. `results/summary.md` contains a ready-made table.
+The system was evaluated under multiple network conditions using static round-robin and adaptive load-balancing modes.
 
-| Scenario         | Metric            | Static     | Adaptive   | Improvement |
-|------------------|-------------------|------------|------------|-------------|
-| Normal load      | Avg response time | `__ ms`    | `__ ms`    | `__ %`      |
-| One slow server  | 95th pct latency  | `__ ms`    | `__ ms`    | `__ %`      |
-| Server failure   | Failed requests   | `__ %`     | `__ %`     | `__ %`      |
-| High concurrency | Throughput        | `__ req/s` | `__ req/s` | `__ %`      |
+### Performance Comparison
 
-Graphs are saved in `results/`:
+| Scenario | Metric | Static | Adaptive | Improvement |
+|---|---|---:|---:|---:|
+| Normal load | Average response time | 23.5 ms | 23.6 ms | -0.4% |
+| Normal load | P95 response time | 27.6 ms | 26.0 ms | 6% |
+| Normal load | Throughput | 72.6 req/s | 72.0 req/s | -1% |
+| One slow server | Average response time | 126.6 ms | 96.6 ms | 24% |
+| One slow server | P95 response time | 329.6 ms | 324.2 ms | 2% |
+| One slow server | Throughput | 39.6 req/s | 45.6 req/s | 15% |
+| 10 clients | Average response time | 24.0 ms | 22.9 ms | 5% |
+| 100 clients | Throughput | 804.0 req/s | 807.5 req/s | Approximately 0% |
+| Server failure | Failed requests | 22.9% | 12.1% | 47% |
+| Link congestion | Average response time | 110.3 ms | 47.8 ms | 57% |
+| Link congestion | P95 response time | 404.8 ms | 129.8 ms | 68% |
+| Link congestion | Throughput | 28.4 req/s | 40.8 req/s | 43% |
 
-![Response time comparison](results/response_time.png)
-![Load distribution](results/load_distribution.png)
+### Performance Graphs
 
-**Observations:** `<Summarize what the graphs show and why adaptive does or does not help.>`
+#### Response Time Comparison
+
+![Response Time Comparison](results/response_time.png)
+
+#### Load Distribution
+
+![Load Distribution](results/load_distribution.png)
+
+### Observations
+
+1. Under normal load, both algorithms demonstrate comparable performance.
+2. Under heterogeneous server conditions, adaptive load balancing improves average response time and throughput by directing new flows towards less-loaded servers.
+3. During server failure, adaptive mode reduces the failed request rate from 22.9% to 12.1%.
+4. Under link congestion, adaptive mode demonstrates substantial improvements, reducing average response time by approximately 57% and P95 response time by approximately 68%.
+5. At high concurrency, both approaches achieve comparable throughput.
+
+Overall, the results indicate that adaptive load balancing provides its greatest benefits under heterogeneous server conditions, server failures, and network congestion rather than under uniformly distributed normal workloads.
+
+**Note:** The overload test showed a reduction in traffic directed towards the throttled server, but the expected overload state transition was not consistently recorded. This remains a limitation of the current evaluation.
 
 ## 12. Configuration Reference
 
