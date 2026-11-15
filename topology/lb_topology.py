@@ -20,13 +20,20 @@ from mininet.cli import CLI
 from mininet.link import TCLink
 from mininet.log import info, setLogLevel
 from mininet.net import Mininet
-from mininet.node import OVSSwitch, RemoteController
-from mininet.util import connectToRootNS
+from mininet.node import OVSSwitch, RemoteController, Node
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PID_DIR = "/tmp/lb_hosts"
 
+def connectToRootNS(network, switch, ip, routes):
+    root = Node('root', inNamespace=False)
+    intf = network.addLink(root, switch).intf1
+    root.setIP(ip, intf=intf)
+    network.start()
 
+    for route in routes:
+        root.cmd('route add -net ' + route + ' dev ' + str(intf))
+        
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default=os.path.join(ROOT, "config", "config.yaml"))
