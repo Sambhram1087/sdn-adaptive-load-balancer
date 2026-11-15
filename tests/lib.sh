@@ -40,7 +40,7 @@ start_env() {  # $1 = static|adaptive   $2 = log prefix (<prefix>_stats.csv, <pr
   LB_MODE=$mode LB_LOG_PREFIX=$prefix "$RYU" "$ROOT/controller/lb_controller.py" >"$LOGS/ryu_$mode.log" 2>&1 &
   CTRL=$!
   sleep 3
-  python3 "$ROOT/topology/lb_topology.py" --no-cli >"$LOGS/topology.log" 2>&1 &
+  /usr/bin/python3 "$ROOT/topology/lb_topology.py" --no-cli >"$LOGS/topology.log" 2>&1 &
   TOPO=$!
   for _ in $(seq 60); do [ -f "$PIDS/ready" ] && break; sleep 1; done
   if [ ! -f "$PIDS/ready" ]; then
