@@ -4,3 +4,5 @@ pyyaml
 psutil
 matplotlib
 pandas
+fastapi
+uvicorn

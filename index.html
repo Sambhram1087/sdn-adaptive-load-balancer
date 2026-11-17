@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Smart Load Balancer - Results</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--tx:#1c2430;--mut:#667085;--ln:#e4e7ec;--st:#98a2b3;--ad:#2563eb;--ok:#16a34a;--bad:#dc2626;--meh:#d97706}
+@media(prefers-color-scheme:dark){:root{--bg:#0f141b;--card:#171e28;--tx:#e8ecf2;--mut:#9aa6b6;--ln:#273142;--st:#5b6678;--ad:#60a5fa}}
+*{box-sizing:border-box}body{margin:0;font:16px/1.5 system-ui,sans-serif;background:var(--bg);color:var(--tx)}
+main{max-width:980px;margin:auto;padding:24px 16px 60px}
+h1{margin:0 0 4px;font-size:26px}p.sub{margin:0 0 20px;color:var(--mut)}
+.card{background:var(--card);border:1px solid var(--ln);border-radius:14px;padding:18px;margin-bottom:16px}
+.how{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:640px){.how{grid-template-columns:1fr}}
+.how div{padding:12px;border-radius:10px;border:1px solid var(--ln)}.how b{display:block;margin-bottom:2px}
+.tally{display:flex;gap:12px;flex-wrap:wrap}.pill{flex:1;min-width:120px;text-align:center;padding:14px;border-radius:12px;border:1px solid var(--ln)}
+.pill .n{font-size:32px;font-weight:700}
+.better{color:var(--ok)}.worse{color:var(--bad)}.same{color:var(--meh)}
+.head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}
+.head h2{margin:0;font-size:19px}.about{color:var(--mut);margin:2px 0 0;font-size:14px}
+.badge{font-size:13px;font-weight:600;padding:3px 10px;border-radius:99px;border:1px solid currentColor;white-space:nowrap}
+.sum{margin:10px 0 14px;font-weight:600}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:18px}@media(max-width:640px){.cols{grid-template-columns:1fr}}
+.cols h3{margin:0 0 8px;font-size:13px;color:var(--mut);text-transform:uppercase;letter-spacing:.04em}
+.row{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:14px}.row .l{width:78px;color:var(--mut)}
+.bar{flex:1;height:18px;background:var(--bg);border-radius:6px;overflow:hidden}.bar i{display:block;height:100%;border-radius:6px}
+.row .v{width:84px;text-align:right;font-variant-numeric:tabular-nums}
+.stack{display:flex;height:22px;border-radius:6px;overflow:hidden;margin:4px 0 2px}.stack i{display:block;font-style:normal;font-size:11px;color:#fff;text-align:center;line-height:22px}
+.leg{font-size:12px;color:var(--mut);margin-bottom:8px}.note{margin-top:10px;font-size:14px;color:var(--mut)}
+details{margin-top:12px;font-size:13px;color:var(--mut)}table{border-collapse:collapse;width:100%;margin-top:8px}td,th{padding:4px 8px;text-align:right;border-bottom:1px solid var(--ln)}th:first-child,td:first-child{text-align:left}
+button{font:inherit;padding:6px 14px;border-radius:8px;border:1px solid var(--ln);background:var(--card);color:var(--tx);cursor:pointer}
+code{background:var(--bg);padding:2px 6px;border-radius:5px}
+</style></head><body><main>
+<div class="head"><div><h1>Smart Load Balancer - Results</h1>
+<p class="sub">Does choosing servers by how busy they are beat taking turns?</p></div><button onclick="load()">Refresh</button></div>
+<div class="card how"><div><b>Static (grey)</b>Takes turns. Sends each user to the next server, ignoring how busy or broken it is.</div>
+<div><b>Adaptive (blue)</b>Checks every server first and sends users to the least busy healthy one.</div></div>
+<div id="app"><p class="sub">Loading…</p></div>
+</main>
+<script>
+const COL=["#2563eb","#16a34a","#d97706","#9333ea","#0891b2"];
+const f=(x,d=0)=>x==null?"-":Number(x).toFixed(d);
+const LBL={better:"Adaptive wins",same:"Roughly equal",worse:"Static wins"};
+function bars(label,s,a,key,unit,d=0){
+  const m=Math.max(s[key]||0,a[key]||0,1e-9);
+  const r=(n,v,c)=>`<div class="row"><span class="l">${n}</span><div class="bar"><i style="width:${Math.max(2,100*(v||0)/m)}%;background:${c}"></i></div><span class="v">${f(v,d)} ${unit}</span></div>`;
+  return `<h3>${label}</h3>${r("Static",s[key],"var(--st)")}${r("Adaptive",a[key],"var(--ad)")}`;}
+function stack(name,share,servers){
+  return `<div class="row"><span class="l">${name}</span><div class="stack" style="flex:1">${servers.map((x,i)=>share[x]?`<i style="width:${share[x]}%;background:${COL[i%5]}">${share[x]>=8?f(share[x])+"%":""}</i>`:"").join("")}</div></div>`;}
+function card(s,servers){
+  if(!s.verdict) return `<div class="card"><h2>${s.title}</h2><p class="about">${s.about}</p><p class="note">Only one mode has been run so far - run both to compare.</p></div>`;
+  const S=s.static,A=s.adaptive;
+  return `<div class="card"><div class="head"><div><h2>${s.title}</h2><p class="about">${s.about}</p></div>
+  <span class="badge ${s.verdict}">${LBL[s.verdict]}</span></div>
+  <p class="sum">${s.summary}</p>
+  <div class="cols"><div>${bars("How long users waited (lower is better)",S,A,"avg_ms","ms")}
+  ${bars("Requests that failed (lower is better)",S,A,"fail_pct","%",1)}</div>
+  <div>${bars("Requests handled per second (higher is better)",S,A,"throughput_rps","/s",1)}
+  <h3 style="margin-top:14px">Who did the work</h3>${stack("Static",s.share.static,servers)}${stack("Adaptive",s.share.adaptive,servers)}
+  <div class="leg">${servers.map((x,i)=>`<span style="color:${COL[i%5]}">■</span> ${x}`).join(" &nbsp; ")}</div></div></div>
+  ${s.note?`<p class="note">${s.note}</p>`:""}
+  <details><summary>Technical numbers</summary><table><tr><th></th><th>Static</th><th>Adaptive</th></tr>
+  <tr><td>Requests sent</td><td>${f(S.requests)}</td><td>${f(A.requests)}</td></tr>
+  <tr><td>Average latency</td><td>${f(S.avg_ms,1)} ms</td><td>${f(A.avg_ms,1)} ms</td></tr>
+  <tr><td>95th-percentile latency (slowest 5% were at least this slow)</td><td>${f(S.p95_ms,1)} ms</td><td>${f(A.p95_ms,1)} ms</td></tr>
+  <tr><td>Controller packet-ins/s</td><td>${f(S.packet_in_per_s,1)}</td><td>${f(A.packet_in_per_s,1)}</td></tr></table></details></div>`;}
+async function load(){
+  const d=await (await fetch("/api/results")).json(),el=document.getElementById("app");
+  if(d.empty){el.innerHTML=`<div class="card"><b>No results yet.</b><p>Run the experiments first:<br><code>sudo tests/run_comparison.sh</code></p><p>Then press Refresh.</p></div>`;return;}
+  const t=d.tally;
+  el.innerHTML=`<div class="card"><div class="tally">
+  <div class="pill"><div class="n better">${t.better}</div>situations where adaptive was better</div>
+  <div class="pill"><div class="n same">${t.same}</div>about equal</div>
+  <div class="pill"><div class="n worse">${t.worse}</div>where static was better</div></div></div>`+d.scenarios.map(s=>card(s,d.servers)).join("");}
+load();
+</script></body></html>
