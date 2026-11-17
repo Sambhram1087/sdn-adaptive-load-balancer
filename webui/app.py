@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """Plain-language results dashboard.  Run:  uvicorn webui.app:app --reload   (from the repo root)
 Reads results/runs/*.csv (produced by tests/run_comparison.sh) - no Mininet/Ryu needed to view."""
+import glob
 import math
 import os
 import sys
+import threading
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -14,6 +16,10 @@ import plot_results as pr  # reuse loader + per-run statistics
 
 if os.environ.get("LB_RUNS_DIR"):
     pr.RUNS = os.environ["LB_RUNS_DIR"]
+    pr.HERE = os.path.dirname(os.path.abspath(pr.RUNS))  # plots/summary are written next to runs/
+
+PLOTS = {"response_time", "load_distribution"}
+_plot_lock = threading.Lock()
 
 EXPLAIN = {
     "normal": "Everyone is served by three equally fast servers.",
@@ -81,3 +87,19 @@ def results():
 @app.get("/")
 def index():
     return FileResponse(os.path.join(HERE, "index.html"))
+
+
+@app.get("/plots/{name}.png")
+def plot(name: str):
+    """Serve the matplotlib charts; (re)generate them with plot_results.main() when missing or older than the data."""
+    if name not in PLOTS:
+        raise HTTPException(404)
+    path = os.path.join(pr.HERE, name + ".png")
+    with _plot_lock:
+        newest = max((os.path.getmtime(f) for f in glob.glob(os.path.join(pr.RUNS, "*.csv"))), default=0)
+        if not os.path.exists(path) or os.path.getmtime(path) < newest:
+            try:
+                pr.main()
+            except SystemExit:
+                raise HTTPException(404, "no run data yet")
+    return FileResponse(path, media_type="image/png", headers={"Cache-Control": "no-cache"})

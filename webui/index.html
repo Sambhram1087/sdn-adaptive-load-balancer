@@ -24,7 +24,7 @@ h1{margin:0 0 4px;font-size:26px}p.sub{margin:0 0 20px;color:var(--mut)}
 .bar{flex:1;height:18px;background:var(--bg);border-radius:6px;overflow:hidden}.bar i{display:block;height:100%;border-radius:6px}
 .row .v{width:84px;text-align:right;font-variant-numeric:tabular-nums}
 .stack{display:flex;height:22px;border-radius:6px;overflow:hidden;margin:4px 0 2px}.stack i{display:block;font-style:normal;font-size:11px;color:#fff;text-align:center;line-height:22px}
-.leg{font-size:12px;color:var(--mut);margin-bottom:8px}.note{margin-top:10px;font-size:14px;color:var(--mut)}
+.leg{font-size:12px;color:var(--mut);margin-bottom:8px}.charts img{width:100%;height:auto;border-radius:8px;background:#fff;margin:6px 0 2px}.cap{font-size:14px;color:var(--mut);margin:0 0 14px}.note{margin-top:10px;font-size:14px;color:var(--mut)}
 details{margin-top:12px;font-size:13px;color:var(--mut)}table{border-collapse:collapse;width:100%;margin-top:8px}td,th{padding:4px 8px;text-align:right;border-bottom:1px solid var(--ln)}th:first-child,td:first-child{text-align:left}
 button{font:inherit;padding:6px 14px;border-radius:8px;border:1px solid var(--ln);background:var(--card);color:var(--tx);cursor:pointer}
 code{background:var(--bg);padding:2px 6px;border-radius:5px}
@@ -62,13 +62,19 @@ function card(s,servers){
   <tr><td>Average latency</td><td>${f(S.avg_ms,1)} ms</td><td>${f(A.avg_ms,1)} ms</td></tr>
   <tr><td>95th-percentile latency (slowest 5% were at least this slow)</td><td>${f(S.p95_ms,1)} ms</td><td>${f(A.p95_ms,1)} ms</td></tr>
   <tr><td>Controller packet-ins/s</td><td>${f(S.packet_in_per_s,1)}</td><td>${f(A.packet_in_per_s,1)}</td></tr></table></details></div>`;}
-async function load(){
+let T=Date.now();
+async function load(){T=Date.now();
   const d=await (await fetch("/api/results")).json(),el=document.getElementById("app");
   if(d.empty){el.innerHTML=`<div class="card"><b>No results yet.</b><p>Run the experiments first:<br><code>sudo tests/run_comparison.sh</code></p><p>Then press Refresh.</p></div>`;return;}
   const t=d.tally;
   el.innerHTML=`<div class="card"><div class="tally">
   <div class="pill"><div class="n better">${t.better}</div>situations where adaptive was better</div>
   <div class="pill"><div class="n same">${t.same}</div>about equal</div>
-  <div class="pill"><div class="n worse">${t.worse}</div>where static was better</div></div></div>`+d.scenarios.map(s=>card(s,d.servers)).join("");}
+  <div class="pill"><div class="n worse">${t.worse}</div>where static was better</div></div></div>
+  <div class="card charts"><h2 style="margin:0 0 8px;font-size:19px">The big picture</h2>
+  <b>How long users waited</b><p class="cap">Shorter bars are better. The left chart is the average wait; the right one is the wait for the slowest 5% of requests (the "worst case" users). Grey = static, blue = adaptive.</p>
+  <img src="/plots/response_time.png?t=${T}" alt="Response time chart">
+  <b style="display:block;margin-top:14px">Who did the work</b><p class="cap">Each bar is 100% of the requests, split by server colour. Even-sized slices mean the work was shared fairly; one huge slice means one server was overloaded.</p>
+  <img src="/plots/load_distribution.png?t=${T}" alt="Load distribution chart"></div>`+d.scenarios.map(s=>card(s,d.servers)).join("");}
 load();
 </script></body></html>
