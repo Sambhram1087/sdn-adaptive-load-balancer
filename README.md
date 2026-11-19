@@ -1,13 +1,8 @@
-<p align="center">
-  <img src="docs/logo.png" alt="PES University" height="90">
-</p>
-
 <h1 align="center">SDN Adaptive Load Balancer</h1>
 
 <p align="center">
   <b>Dynamic TCP Load Balancing using Mininet, Ryu (OpenFlow 1.3) and Python Sockets</b><br>
   UE25CS243A – Computer Networks · Jackfruit Mini Project<br>
-  PES University, Department of Computer Science and Engineering (AI &amp; ML)
 </p>
 
 | | |
