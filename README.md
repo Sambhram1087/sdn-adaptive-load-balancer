@@ -5,7 +5,7 @@
   UE25CS243A – Computer Networks · Jackfruit Mini Project<br>
 </p>
 
-<h3>THE REPORT OF THE PROJECT IS UPLOADED AS Report.pdf IN THIS REPOSITORY</h3>
+<h3>THE REPORT OF THE PROJECT IS UPLOADED AS Report.pdf IN THIS REPOSITORY</h3> (Report.pdf)
 
 | | |
 |---|---|
