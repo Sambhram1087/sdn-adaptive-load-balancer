@@ -31,8 +31,7 @@
 - [7. Conclusion and Future Work](#7-conclusion-and-future-work)
 - [References](#references)
 - [Appendix A: Team Contributions](#appendix-a-team-contributions)
-- [Appendix B: Additional Screenshots](#appendix-b-additional-screenshots)
-- [Appendix C: Setup and Troubleshooting](#appendix-c-setup-and-troubleshooting)
+- [Appendix B: Setup and Troubleshooting](#appendix-b-setup-and-troubleshooting)
 
 ---
 
@@ -347,24 +346,6 @@ For the static baseline start the controller with `LB_MODE=static`.
 
 `test_basic.sh`, `test_overload.sh` and `test_failure.sh` expect the controller and topology to be running; `run_comparison.sh` starts and stops both itself.
 
-![Output of test_basic.sh](docs/test_basic_output.png)
-
-*Figure 5.1: Output of `test_basic.sh` (T1/T2).*
-
-> **Explanation.** For every client host the script prints the number of successful and failed requests, the average and 95th-percentile latency and the servers that answered. The combined distribution line shows how many requests each of s1, s2 and s3 served, and the final PASS/FAIL line is the verdict of T1 (every host received replies and fewer than 1% of requests failed).
-
-![Output of test_overload.sh](docs/test_overload_output.png)
-
-*Figure 5.2: Output of `test_overload.sh` (T3).*
-
-> **Explanation.** The script starts load from three clients, throttles s1 ten seconds into the run (300 ms delay and 30 ms of CPU work per request) and then prints s1's share of requests before the throttle and more than 15 s after it, together with the controller events that followed. An OVERLOADED event for s1 and a lower share afterwards show that the controller steered new flows away from the slowed server.
-
-![Output of test_failure.sh](docs/test_failure_output.png)
-
-*Figure 5.3: Output of `test_failure.sh` (T4/T5).*
-
-> **Explanation.** The script fails s2 ten seconds into the run and restores it after 28 s, then prints the number of requests, failed requests and requests served by s2 in three phases, followed by the detection time and the recovery time. Failed requests are only expected in the short window before the controller detects the failure and removes the flows to s2.
-
 ---
 
 ## 6. Performance Evaluation and Results
@@ -477,15 +458,7 @@ The project built an SDN-based TCP load balancer in which a Ryu controller combi
 | Saniddhi G (PES1UG25AM544) | Monitoring, performance evaluation, documentation |
 | Bandla Samhith (PES1UG25AM559) | Ryu controller logic and load-balancing policy |
 
-## Appendix B: Additional Screenshots
-
-![Per-port counters of s1](docs/extra_1.png)
-
-*Figure B.1: Per-port counters of `s1` (`ovs-ofctl dump-ports`).*
-
-> **Explanation.** The receive and transmit counters of ports 1–3 show how much traffic each server link carried. These are the same counters the controller polls every two seconds to compute link utilisation.
-
-## Appendix C: Setup and Troubleshooting
+## Appendix B: Setup and Troubleshooting
 
 **Prerequisites:** Ubuntu 20.04/22.04, Python 3.8+ (Ryu works best on 3.8/3.9), Mininet 2.3.0, Open vSwitch 2.13+, Ryu 4.34.
 
