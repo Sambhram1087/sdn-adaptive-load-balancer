@@ -385,23 +385,17 @@ The values are produced by `plot_results.py` (file `results/summary.md`) after r
 
 ### 6.3 Graphs
 
-![Average and 95th-percentile response time, static vs adaptive](docs/response_time.png)
+![Average and 95th-percentile response time, static vs adaptive](results/response_time.png)
 
 *Figure 6.1: Average and 95th-percentile response time, static vs adaptive.*
 
 > **Explanation.** The left panel shows the average and the right panel the 95th-percentile response time for each scenario (grey: static, blue: adaptive); lower is better. With equal servers the two policies are expected to behave similarly. When a server is slowed, congested or failed, its score rises (or it is marked DOWN), so the adaptive policy sends fewer new flows to it, which is where a difference between the bars appears.
 
-![Per-server share of served requests](docs/load_distribution.png)
+![Per-server share of served requests](results/load_distribution.png)
 
 *Figure 6.2: Per-server share of served requests in each scenario.*
 
 > **Explanation.** Each bar shows the percentage of successfully served requests handled by each server. Round-robin gives each server about one third of the requests by construction, regardless of its state. The adaptive bars deviate from an even split when the servers differ, because load is moved away from the slowed, congested or failed server.
-
-![Controller state-change events during the failure run](docs/controller_events.png)
-
-*Figure 6.3: Controller state-change events (`controller_events.csv`) during the failure run.*
-
-> **Explanation.** Each row of the events file records the time, the server, the old and new state and the reason. In the failure run, the delay between the moment s2 is killed and the first DOWN event for s2 is the detection time; it is bounded by the 5 s failure timeout plus the 0.5 s period of the failure check.
 
 ### 6.4 Controller Overhead
 
