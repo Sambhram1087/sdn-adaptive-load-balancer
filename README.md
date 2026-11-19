@@ -506,5 +506,3 @@ sudo mn --test pingall          # verify Mininet
 | No flows installed | `ovs-vsctl set bridge s1 protocols=OpenFlow13` |
 | Servers not reporting | Check `monitoring.report_port` in `config/config.yaml` and that no firewall blocks UDP to 10.0.0.254. |
 | `--mode` rejected by Ryu | Use the `LB_MODE` environment variable instead. |
-
-**Screenshot files expected in `docs/`:** `logo.png`, `topology_screenshot.png`, `controller_running.png`, `flow_table.png`, `test_basic_output.png`, `test_overload_output.png`, `test_failure_output.png`, `response_time.png`, `load_distribution.png` (copy the last two from `results/` after running `plot_results.py`), `controller_events.png`, `extra_1.png`.
