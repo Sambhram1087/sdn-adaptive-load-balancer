@@ -10,7 +10,6 @@
 | **Team Number** | 5 |
 | **Project Number** | 20 |
 | **Semester / Academic Year** | III / 2026–27 |
-| **Date of submission** | 19 November 2026 |
 
 | Name | SRN | Section |
 |---|---|---|
