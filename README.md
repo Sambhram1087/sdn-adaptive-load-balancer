@@ -14,7 +14,7 @@
 | Name | SRN | Section |
 |---|---|---|
 | Sambhram Laxman Sattigeri | PES1UG25AM516 | CSE (AI & ML) "I" |
-| Sanidhi | PES1UG25AM544 | CSE (AI & ML) "I" |
+| Sannidhi G | PES1UG25AM544 | CSE (AI & ML) "I" |
 | Bandla Samhith | PES1UG25AM559 | CSE (AI & ML) "I" |
 
 ---
@@ -474,7 +474,7 @@ The project built an SDN-based TCP load balancer in which a Ryu controller combi
 | Member | Contribution |
 |---|---|
 | Sambhram L. Sattigeri (PES1UG25AM516) | Mininet topology, TCP servers, test scripts |
-| Sanidhi (PES1UG25AM544) | Monitoring, performance evaluation, documentation |
+| Saniddhi G (PES1UG25AM544) | Monitoring, performance evaluation, documentation |
 | Bandla Samhith (PES1UG25AM559) | Ryu controller logic and load-balancing policy |
 
 ## Appendix B: Additional Screenshots
